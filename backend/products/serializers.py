@@ -27,10 +27,12 @@ class ProductVideoSerializer(serializers.ModelSerializer):
 
 class ProductListSerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
+    avg_rating = serializers.FloatField(read_only=True, required=False)
+    review_count = serializers.IntegerField(read_only=True, required=False)
 
     class Meta:
         model = Product
-        fields = ('id', 'title', 'slug', 'price', 'wholesale_price', 'moq', 'stock', 'condition', 'primary_image', 'created_at', 'seller')
+        fields = ('id', 'title', 'slug', 'price', 'wholesale_price', 'moq', 'stock', 'condition', 'primary_image', 'created_at', 'seller', 'avg_rating', 'review_count')
 
     def get_primary_image(self, obj):
         primary = obj.images.filter(is_primary=True).first()
@@ -47,6 +49,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     videos = ProductVideoSerializer(many=True, read_only=True)
     seller_name = serializers.CharField(source='seller.email', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
+    avg_rating = serializers.FloatField(read_only=True, required=False)
+    review_count = serializers.IntegerField(read_only=True, required=False)
 
     class Meta:
         model = Product
@@ -72,7 +76,6 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
         images_data = validated_data.pop('images', None)
         product = super().update(instance, validated_data)
         if images_data is not None:
-            # Remove existing images? For simplicity, we add new ones; user can delete individually later.
             for img_data in images_data:
                 ProductImage.objects.create(product=product, **img_data)
         return product

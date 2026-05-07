@@ -9,3 +9,5 @@ export const updateCartItem = (itemId, quantity) => api.patch(`/products/cart/${
 export const removeCartItem = (itemId) => api.delete(`/products/cart/${itemId}/`);
 export const addToWishlist = (productId) => api.post('/products/wishlist/', { product: productId });
 export const removeFromWishlist = (productId) => api.delete(`/products/wishlist/${productId}/`);
+export const getProductReviews = (slug) => api.get(`/products/${slug}/reviews/`);
+export const createReview = (data) => api.post('/products/reviews/create/', data);

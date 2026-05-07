@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getProducts, getCategories } from '../api/products';
+import StarRating from '../components/StarRating';
 
 export default function HomePage() {
   const [products, setProducts] = useState([]);
@@ -13,7 +14,6 @@ export default function HomePage() {
 
   useEffect(() => {
     getCategories().then(res => {
-      // Handle both plain array and paginated response
       const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
       setCategories(data);
     });
@@ -79,6 +79,7 @@ export default function HomePage() {
                 <div className="p-4">
                   <h3 className="font-semibold text-lg truncate">{product.title}</h3>
                   <p className="text-gray-600">ZMW {product.price}</p>
+                  <StarRating rating={product.avg_rating || 0} reviewCount={product.review_count} size={14} />
                   <span className="text-sm text-gray-500">{product.condition}</span>
                 </div>
               </Link>

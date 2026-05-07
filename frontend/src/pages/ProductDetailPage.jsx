@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getProduct } from '../api/products';
-import { useDispatch } from 'react-redux';
+import { getProduct, getProductReviews, createReview } from '../api/products';
+import { useDispatch, useSelector } from 'react-redux';
 import { addItemToCart } from '../store/cartSlice';
 import toast from 'react-hot-toast';
+import StarRating from '../components/StarRating';
+import { FaStar } from 'react-icons/fa';
 
 export default function ProductDetailPage() {
   const { slug } = useParams();
   const [product, setProduct] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [quantity, setQuantity] = useState(1);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState('');
   const dispatch = useDispatch();
+  const { user, token } = useSelector(state => state.auth);
 
   useEffect(() => {
     getProduct(slug).then(res => setProduct(res.data));
+    getProductReviews(slug).then(res => setReviews(res.data.results || res.data));
   }, [slug]);
 
   const handleAddToCart = async () => {
@@ -21,6 +29,24 @@ export default function ProductDetailPage() {
       toast.success('Added to cart!');
     } catch (err) {
       toast.error('Could not add to cart');
+    }
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    try {
+      await createReview({
+        product: product.id,
+        rating: newRating,
+        comment: newComment
+      });
+      toast.success('Review submitted!');
+      setShowReviewForm(false);
+      // refresh reviews
+      const res = await getProductReviews(slug);
+      setReviews(res.data.results || res.data);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to submit review');
     }
   };
 
@@ -38,6 +64,7 @@ export default function ProductDetailPage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold mb-4">{product.title}</h1>
+          <StarRating rating={product.avg_rating || 0} reviewCount={product.review_count} size={20} />
           <p className="text-2xl text-indigo-600 mb-4">ZMW {product.price}</p>
           <p className="text-gray-700 mb-6">{product.description}</p>
           <p className="text-sm text-gray-500 mb-2">Seller: {product.seller_name}</p>
@@ -58,6 +85,78 @@ export default function ProductDetailPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="mt-12">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Customer Reviews</h2>
+          {token && !showReviewForm && (
+            <button
+              onClick={() => setShowReviewForm(true)}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+            >
+              Write a Review
+            </button>
+          )}
+        </div>
+
+        {showReviewForm && (
+          <form onSubmit={handleSubmitReview} className="bg-white p-6 rounded-lg shadow-md mb-8">
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Rating</label>
+              <div className="flex gap-1">
+                {[1,2,3,4,5].map(rating => (
+                  <button
+                    type="button"
+                    key={rating}
+                    onClick={() => setNewRating(rating)}
+                    className="text-2xl focus:outline-none"
+                  >
+                    <FaStar color={rating <= newRating ? '#faca15' : '#d1d5db'} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <textarea
+              className="w-full border rounded px-3 py-2 mb-4"
+              rows="4"
+              placeholder="Write your comment..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              required
+            />
+            <div className="flex gap-2">
+              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                Submit Review
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowReviewForm(false)}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {reviews.length === 0 ? (
+          <p>No reviews yet. Be the first to review!</p>
+        ) : (
+          <div className="space-y-4">
+            {reviews.map(review => (
+              <div key={review.id} className="bg-white p-4 rounded-lg shadow-sm border">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium">{review.user_email}</span>
+                  <span className="text-sm text-gray-500">{new Date(review.created_at).toLocaleDateString()}</span>
+                </div>
+                <StarRating rating={review.rating} size={16} />
+                <p className="mt-2 text-gray-700">{review.comment}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, filters, status, parsers
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Avg, Count
 from .models import Product, Category, Review, Wishlist, Cart, CartItem
 from .serializers import (
     ProductListSerializer, ProductDetailSerializer, ProductCreateUpdateSerializer,
@@ -16,21 +17,30 @@ class CategoryListView(generics.ListAPIView):
 
 
 class ProductListView(generics.ListAPIView):
-    queryset = Product.objects.filter(is_active=True).select_related('category', 'seller').prefetch_related('images')
     serializer_class = ProductListSerializer
     permission_classes = (permissions.AllowAny,)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category__slug', 'condition', 'seller']
     search_fields = ['title', 'description']
-    ordering_fields = ['price', 'created_at']
+    ordering_fields = ['price', 'created_at', 'avg_rating']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        return Product.objects.filter(is_active=True)\
+            .select_related('category', 'seller')\
+            .prefetch_related('images')\
+            .annotate(avg_rating=Avg('reviews__rating'), review_count=Count('reviews'))
 
 
 class ProductDetailView(generics.RetrieveAPIView):
-    queryset = Product.objects.filter(is_active=True).prefetch_related('images', 'videos', 'reviews')
     serializer_class = ProductDetailSerializer
     permission_classes = (permissions.AllowAny,)
     lookup_field = 'slug'
+
+    def get_queryset(self):
+        return Product.objects.filter(is_active=True)\
+            .prefetch_related('images', 'videos', 'reviews')\
+            .annotate(avg_rating=Avg('reviews__rating'), review_count=Count('reviews'))
 
 
 class SellerProductListView(generics.ListCreateAPIView):
@@ -43,7 +53,8 @@ class SellerProductListView(generics.ListCreateAPIView):
         return ProductListSerializer
 
     def get_queryset(self):
-        return Product.objects.filter(seller=self.request.user)
+        return Product.objects.filter(seller=self.request.user)\
+            .annotate(avg_rating=Avg('reviews__rating'), review_count=Count('reviews'))
 
     def perform_create(self, serializer):
         serializer.save(seller=self.request.user)
@@ -77,7 +88,7 @@ class ReviewListView(generics.ListAPIView):
 
     def get_queryset(self):
         product_slug = self.kwargs['slug']
-        return Review.objects.filter(product__slug=product_slug)
+        return Review.objects.filter(product__slug=product_slug).select_related('user')
 
 
 class WishlistView(generics.ListCreateAPIView):
