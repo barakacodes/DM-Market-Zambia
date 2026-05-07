@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { fetchCart, updateItemQuantity, deleteItem } from '../store/cartSlice';
 
 export default function CartPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { items, isLoading } = useSelector(state => state.cart);
 
   useEffect(() => {
@@ -58,7 +60,10 @@ export default function CartPage() {
             </div>
           ))}
           <div className="mt-8 text-right">
-            <button className="bg-green-600 text-white px-8 py-3 rounded-md hover:bg-green-700">
+            <button
+              onClick={() => navigate('/checkout')}
+              className="bg-green-600 text-white px-8 py-3 rounded-md hover:bg-green-700"
+            >
               Proceed to Checkout
             </button>
           </div>
