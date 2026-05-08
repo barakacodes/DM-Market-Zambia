@@ -19,7 +19,8 @@ export default function ProductDetailPage() {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const dispatch = useDispatch();
-  const { user, token } = useSelector(state => state.auth);
+  const { user, token, retailer } = useSelector(state => state.auth);
+  const isRetailer = retailer?.is_approved || user?.role === 'wholesaler';
 
   useEffect(() => {
     getProduct(slug).then(res => setProduct(res.data));
@@ -39,11 +40,7 @@ export default function ProductDetailPage() {
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     try {
-      await createReview({
-        product: product.id,
-        rating: newRating,
-        comment: newComment
-      });
+      await createReview({ product: product.id, rating: newRating, comment: newComment });
       toast.success('Review submitted!');
       setShowReviewForm(false);
       const res = await getProductReviews(slug);
@@ -71,10 +68,20 @@ export default function ProductDetailPage() {
             {token && <HeartButton productId={product.id} size={24} />}
           </div>
           <StarRating rating={product.avg_rating || 0} reviewCount={product.review_count} size={20} />
-          <p className="text-2xl text-indigo-600 mb-4">ZMW {product.price}</p>
-          <p className="text-gray-700 mb-6">{product.description}</p>
+          
+          {isRetailer && product.wholesale_price ? (
+            <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-2xl text-green-700 font-bold">Wholesale: ZMW {product.wholesale_price}</p>
+              {product.moq > 1 && <p className="text-sm text-green-600">Minimum order: {product.moq} units</p>}
+            </div>
+          ) : (
+            <p className="text-2xl text-indigo-600 mb-4">ZMW {product.price}</p>
+          )}
+          
+          <p className="text-gray-700 mb-6 mt-4">{product.description}</p>
           <p className="text-sm text-gray-500 mb-2">Seller: {product.seller_name}</p>
           <p className="text-sm text-gray-500 mb-4">Category: {product.category_name}</p>
+          
           <div className="flex items-center gap-4 mb-6">
             <input
               type="number"
@@ -98,55 +105,30 @@ export default function ProductDetailPage() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Customer Reviews</h2>
           {token && !showReviewForm && (
-            <button
-              onClick={() => setShowReviewForm(true)}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-            >
+            <button onClick={() => setShowReviewForm(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
               Write a Review
             </button>
           )}
         </div>
-
         {showReviewForm && (
           <form onSubmit={handleSubmitReview} className="bg-white p-6 rounded-lg shadow-md mb-8">
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1">Rating</label>
               <div className="flex gap-1">
                 {[1,2,3,4,5].map(rating => (
-                  <button
-                    type="button"
-                    key={rating}
-                    onClick={() => setNewRating(rating)}
-                    className="text-2xl focus:outline-none"
-                  >
+                  <button type="button" key={rating} onClick={() => setNewRating(rating)} className="text-2xl focus:outline-none">
                     <FaStar color={rating <= newRating ? '#faca15' : '#d1d5db'} />
                   </button>
                 ))}
               </div>
             </div>
-            <textarea
-              className="w-full border rounded px-3 py-2 mb-4"
-              rows="4"
-              placeholder="Write your comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              required
-            />
+            <textarea className="w-full border rounded px-3 py-2 mb-4" rows="4" placeholder="Write your comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} required />
             <div className="flex gap-2">
-              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
-                Submit Review
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowReviewForm(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
-              >
-                Cancel
-              </button>
+              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">Submit Review</button>
+              <button type="button" onClick={() => setShowReviewForm(false)} className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400">Cancel</button>
             </div>
           </form>
         )}
-
         {reviews.length === 0 ? (
           <p>No reviews yet. Be the first to review!</p>
         ) : (

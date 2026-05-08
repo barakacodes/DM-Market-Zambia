@@ -4,10 +4,10 @@ import { logout } from '../store/authSlice';
 import { useEffect } from 'react';
 import { fetchCart } from '../store/cartSlice';
 import { fetchWishlist } from '../store/wishlistSlice';
-import { FiShoppingCart, FiUser, FiLogOut, FiHeart } from 'react-icons/fi';
+import { FiShoppingCart, FiUser, FiLogOut, FiHeart, FiBriefcase } from 'react-icons/fi';
 
 export default function Navbar() {
-  const { user, token } = useSelector(state => state.auth);
+  const { user, token, retailer } = useSelector(state => state.auth);
   const { items } = useSelector(state => state.cart);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -42,6 +42,11 @@ export default function Navbar() {
               </span>
             )}
           </Link>
+          {user && user.role === 'buyer' && !retailer?.is_approved && (
+            <Link to="/apply" className="text-sm font-medium text-green-600 flex items-center gap-1">
+              <FiBriefcase /> Apply as Retailer
+            </Link>
+          )}
           {user ? (
             <>
               <Link to="/dashboard" className="text-sm font-medium"><FiUser className="inline mr-1" />{user.email}</Link>

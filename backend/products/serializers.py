@@ -24,9 +24,13 @@ class ProductListSerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
     avg_rating = serializers.FloatField(read_only=True, required=False)
     review_count = serializers.IntegerField(read_only=True, required=False)
+    wholesale_price = serializers.SerializerMethodField()
+    moq = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
         fields = ('id', 'title', 'slug', 'price', 'wholesale_price', 'moq', 'stock', 'condition', 'primary_image', 'created_at', 'seller', 'avg_rating', 'review_count')
+
     def get_primary_image(self, obj):
         primary = obj.images.filter(is_primary=True).first()
         if primary:
@@ -36,6 +40,26 @@ class ProductListSerializer(serializers.ModelSerializer):
             return primary.image.url
         return None
 
+    def _can_see_wholesale(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        if obj.seller == request.user:
+            return True
+        # Avoid circular imports by importing here
+        from wholesale.models import RetailerProfile
+        return RetailerProfile.objects.filter(user=request.user, is_approved=True).exists()
+
+    def get_wholesale_price(self, obj):
+        if self._can_see_wholesale(obj) and obj.wholesale_price:
+            return obj.wholesale_price
+        return None
+
+    def get_moq(self, obj):
+        if self._can_see_wholesale(obj) and obj.moq > 1:
+            return obj.moq
+        return None
+
 class ProductDetailSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     videos = ProductVideoSerializer(many=True, read_only=True)
@@ -43,9 +67,31 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     avg_rating = serializers.FloatField(read_only=True, required=False)
     review_count = serializers.IntegerField(read_only=True, required=False)
+    wholesale_price = serializers.SerializerMethodField()
+    moq = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
         fields = '__all__'
+
+    def _can_see_wholesale(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        if obj.seller == request.user:
+            return True
+        from wholesale.models import RetailerProfile
+        return RetailerProfile.objects.filter(user=request.user, is_approved=True).exists()
+
+    def get_wholesale_price(self, obj):
+        if self._can_see_wholesale(obj) and obj.wholesale_price:
+            return obj.wholesale_price
+        return None
+
+    def get_moq(self, obj):
+        if self._can_see_wholesale(obj) and obj.moq > 1:
+            return obj.moq
+        return None
 
 class ProductCreateUpdateSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, required=False)
@@ -94,12 +140,30 @@ class WishlistSerializer(serializers.ModelSerializer):
 class CartItemSerializer(serializers.ModelSerializer):
     product = ProductListSerializer(read_only=True)
     product_id = serializers.IntegerField(write_only=True)
+    price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
     class Meta:
         model = CartItem
-        fields = ('id', 'product', 'product_id', 'quantity')
+        fields = ('id', 'product', 'product_id', 'quantity', 'price')
+
     def create(self, validated_data):
         cart, _ = Cart.objects.get_or_create(user=self.context['request'].user)
         validated_data['cart'] = cart
+        # Set price based on wholesale if applicable
+        from wholesale.models import RetailerProfile
+        product = validated_data['product_id']
+        # Fetch product instance to get price
+        try:
+            product_obj = Product.objects.get(pk=product)
+        except Product.DoesNotExist:
+            raise serializers.ValidationError("Product not found.")
+        # Determine price: if user is retailer and product has wholesale_price and quantity meets MOQ
+        user = self.context['request'].user
+        retailer = RetailerProfile.objects.filter(user=user, is_approved=True).first()
+        effective_price = product_obj.price
+        if retailer and product_obj.wholesale_price and validated_data.get('quantity', 1) >= product_obj.moq:
+            effective_price = product_obj.wholesale_price
+        validated_data['price'] = effective_price
         return super().create(validated_data)
 
 class CartSerializer(serializers.ModelSerializer):

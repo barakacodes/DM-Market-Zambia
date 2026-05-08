@@ -1,12 +1,12 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getProducts, getCategories } from '../api/products';
 import StarRating from '../components/StarRating';
 import HeartButton from '../components/HeartButton';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { fetchWishlist } from '../store/wishlistSlice';
 import { FiSearch, FiX } from 'react-icons/fi';
-import debounce from 'lodash.debounce'; // we'll install lodash.debounce
+import debounce from 'lodash.debounce';
 
 export default function HomePage() {
   const [products, setProducts] = useState([]);
@@ -17,6 +17,8 @@ export default function HomePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const dispatch = useDispatch();
+  const { user, retailer } = useSelector(state => state.auth);
+  const isRetailer = retailer?.is_approved || user?.role === 'wholesaler';
 
   useEffect(() => {
     getCategories().then(res => {
@@ -26,45 +28,34 @@ export default function HomePage() {
     dispatch(fetchWishlist());
   }, [dispatch]);
 
-  // Debounced search function
   const debouncedSearch = useMemo(
-    () =>
-      debounce((search, cat, pageNum) => {
-        setLoading(true);
-        const params = { page: pageNum };
-        if (search) params.search = search;
-        if (cat) params.category__slug = cat;
-        getProducts(params)
-          .then(res => {
-            const productsData = res.data.results || res.data;
-            setProducts(productsData);
-            setTotalPages(Math.ceil((res.data.count || productsData.length) / 12));
-            setLoading(false);
-          })
-          .catch(() => setLoading(false));
-      }, 300),
+    () => debounce((search, cat, pageNum) => {
+      setLoading(true);
+      const params = { page: pageNum };
+      if (search) params.search = search;
+      if (cat) params.category__slug = cat;
+      getProducts(params)
+        .then(res => {
+          const productsData = res.data.results || res.data;
+          setProducts(productsData);
+          setTotalPages(Math.ceil((res.data.count || productsData.length) / 12));
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    }, 300),
     []
   );
 
-  // Trigger search whenever searchTerm, category, or page changes
   useEffect(() => {
     debouncedSearch(searchTerm, category, page);
     return () => debouncedSearch.cancel();
   }, [searchTerm, category, page, debouncedSearch]);
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-    setPage(1); // reset to first page on new search
-  };
-
-  const clearSearch = () => {
-    setSearchTerm('');
-    setPage(1);
-  };
+  const handleSearchChange = (e) => { setSearchTerm(e.target.value); setPage(1); };
+  const clearSearch = () => { setSearchTerm(''); setPage(1); };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="relative flex-grow">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -76,10 +67,7 @@ export default function HomePage() {
             className="w-full pl-10 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           {searchTerm && (
-            <button
-              onClick={clearSearch}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={clearSearch} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
               <FiX />
             </button>
           )}
@@ -96,7 +84,6 @@ export default function HomePage() {
         </select>
       </div>
 
-      {/* Product Grid */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -112,17 +99,8 @@ export default function HomePage() {
       ) : products.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-xl text-gray-500 mb-2">No products found</p>
-          {searchTerm && (
-            <p className="text-gray-400">
-              We couldn't find anything for "{searchTerm}". Try a different term or browse categories.
-            </p>
-          )}
-          <button
-            onClick={clearSearch}
-            className="mt-4 text-indigo-600 hover:underline"
-          >
-            Clear search
-          </button>
+          {searchTerm && <p className="text-gray-400">We couldn't find anything for "{searchTerm}". Try a different term or browse categories.</p>}
+          <button onClick={clearSearch} className="mt-4 text-indigo-600 hover:underline">Clear search</button>
         </div>
       ) : (
         <>
@@ -140,6 +118,11 @@ export default function HomePage() {
                 <div className="p-4">
                   <h3 className="font-semibold text-lg truncate">{product.title}</h3>
                   <p className="text-gray-600">ZMW {product.price}</p>
+                  {isRetailer && product.wholesale_price && (
+                    <p className="text-sm text-green-700 font-medium">
+                      Wholesale: ZMW {product.wholesale_price} {product.moq > 1 && `(min. ${product.moq})`}
+                    </p>
+                  )}
                   <StarRating rating={product.avg_rating || 0} reviewCount={product.review_count} size={14} />
                   <span className="text-sm text-gray-500">{product.condition}</span>
                 </div>
@@ -148,21 +131,9 @@ export default function HomePage() {
           </div>
           {totalPages > 1 && (
             <div className="flex justify-center gap-2 mt-8">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1 border rounded-md disabled:opacity-50"
-              >
-                Previous
-              </button>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1 border rounded-md disabled:opacity-50">Previous</button>
               <span className="px-3 py-1">Page {page} of {totalPages}</span>
-              <button
-                onClick={() => setPage(p => p + 1)}
-                disabled={page === totalPages}
-                className="px-3 py-1 border rounded-md disabled:opacity-50"
-              >
-                Next
-              </button>
+              <button onClick={() => setPage(p => p + 1)} disabled={page === totalPages} className="px-3 py-1 border rounded-md disabled:opacity-50">Next</button>
             </div>
           )}
         </>
