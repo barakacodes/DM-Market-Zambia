@@ -3,9 +3,12 @@ import { useParams } from 'react-router-dom';
 import { getProduct, getProductReviews, createReview } from '../api/products';
 import { useDispatch, useSelector } from 'react-redux';
 import { addItemToCart } from '../store/cartSlice';
+import { fetchWishlist } from '../store/wishlistSlice';
 import toast from 'react-hot-toast';
 import StarRating from '../components/StarRating';
+import HeartButton from '../components/HeartButton';
 import { FaStar } from 'react-icons/fa';
+import { getMediaUrl } from '../utils/mediaUrl';
 
 export default function ProductDetailPage() {
   const { slug } = useParams();
@@ -21,7 +24,8 @@ export default function ProductDetailPage() {
   useEffect(() => {
     getProduct(slug).then(res => setProduct(res.data));
     getProductReviews(slug).then(res => setReviews(res.data.results || res.data));
-  }, [slug]);
+    if (token) dispatch(fetchWishlist());
+  }, [slug, token, dispatch]);
 
   const handleAddToCart = async () => {
     try {
@@ -42,7 +46,6 @@ export default function ProductDetailPage() {
       });
       toast.success('Review submitted!');
       setShowReviewForm(false);
-      // refresh reviews
       const res = await getProductReviews(slug);
       setReviews(res.data.results || res.data);
     } catch (err) {
@@ -56,14 +59,17 @@ export default function ProductDetailPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
-          {product.images?.[0]?.image ? (
-            <img src={product.images[0].image} alt={product.title} className="w-full rounded-lg" />
+          {product.images && product.images.length > 0 ? (
+            <img src={getMediaUrl(product.images[0].image)} alt={product.title} className="w-full rounded-lg" />
           ) : (
             <img src="https://via.placeholder.com/500" alt="placeholder" className="w-full rounded-lg" />
           )}
         </div>
         <div>
-          <h1 className="text-3xl font-bold mb-4">{product.title}</h1>
+          <div className="flex justify-between items-start">
+            <h1 className="text-3xl font-bold mb-4">{product.title}</h1>
+            {token && <HeartButton productId={product.id} size={24} />}
+          </div>
           <StarRating rating={product.avg_rating || 0} reviewCount={product.review_count} size={20} />
           <p className="text-2xl text-indigo-600 mb-4">ZMW {product.price}</p>
           <p className="text-gray-700 mb-6">{product.description}</p>

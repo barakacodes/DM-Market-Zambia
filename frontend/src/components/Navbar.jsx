@@ -3,7 +3,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../store/authSlice';
 import { useEffect } from 'react';
 import { fetchCart } from '../store/cartSlice';
-import { FiShoppingCart, FiUser, FiLogOut } from 'react-icons/fi';
+import { fetchWishlist } from '../store/wishlistSlice';
+import { FiShoppingCart, FiUser, FiLogOut, FiHeart } from 'react-icons/fi';
 
 export default function Navbar() {
   const { user, token } = useSelector(state => state.auth);
@@ -12,7 +13,10 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (token) dispatch(fetchCart());
+    if (token) {
+      dispatch(fetchCart());
+      dispatch(fetchWishlist());
+    }
   }, [token, dispatch]);
 
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -27,6 +31,9 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
         <Link to="/" className="text-xl font-bold text-indigo-600">DM Market</Link>
         <div className="flex items-center gap-4">
+          <Link to="/wishlist" className="relative">
+            <FiHeart className="text-2xl" />
+          </Link>
           <Link to="/cart" className="relative">
             <FiShoppingCart className="text-2xl" />
             {cartCount > 0 && (

@@ -15,6 +15,7 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
 import SellerDashboard from './pages/SellerDashboard';
+import WishlistPage from './pages/WishlistPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -57,6 +58,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             element={
               <ProtectedRoute>
                 <OrderHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wishlist"
+            element={
+              <ProtectedRoute>
+                <WishlistPage />
               </ProtectedRoute>
             }
           />
