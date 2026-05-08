@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchCart, updateItemQuantity, deleteItem } from '../store/cartSlice';
+import EmptyState from '../components/EmptyState';
 
 export default function CartPage() {
   const dispatch = useDispatch();
@@ -20,55 +21,65 @@ export default function CartPage() {
     dispatch(deleteItem(itemId));
   };
 
-  if (isLoading) return <p>Loading cart...</p>;
+  if (isLoading) return <p className="text-center py-8">Loading cart...</p>;
+
+  if (items.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+        <EmptyState
+          title="Your cart is empty"
+          message="Browse our products and add items you love."
+          actionText="Shop now"
+          actionLink="/"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
-      {items.length === 0 ? (
-        <p>Your cart is empty.</p>
-      ) : (
-        <div>
-          {items.map(item => (
-            <div key={item.id} className="flex items-center justify-between border-b py-4">
-              <div className="flex items-center gap-4">
-                <img
-                  src={item.product.primary_image || 'https://via.placeholder.com/80'}
-                  alt={item.product.title}
-                  className="w-16 h-16 object-cover rounded"
-                />
-                <div>
-                  <h3 className="font-semibold">{item.product.title}</h3>
-                  <p className="text-gray-600">ZMW {item.product.price}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <input
-                  type="number"
-                  min="1"
-                  value={item.quantity}
-                  onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value))}
-                  className="w-16 border rounded px-2 py-1"
-                />
-                <button
-                  onClick={() => handleRemove(item.id)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  Remove
-                </button>
+      <div>
+        {items.map(item => (
+          <div key={item.id} className="flex items-center justify-between border-b py-4">
+            <div className="flex items-center gap-4">
+              <img
+                src={item.product.primary_image || 'https://via.placeholder.com/80'}
+                alt={item.product.title}
+                className="w-16 h-16 object-cover rounded"
+              />
+              <div>
+                <h3 className="font-semibold">{item.product.title}</h3>
+                <p className="text-gray-600">ZMW {item.product.price}</p>
               </div>
             </div>
-          ))}
-          <div className="mt-8 text-right">
-            <button
-              onClick={() => navigate('/checkout')}
-              className="bg-green-600 text-white px-8 py-3 rounded-md hover:bg-green-700"
-            >
-              Proceed to Checkout
-            </button>
+            <div className="flex items-center gap-4">
+              <input
+                type="number"
+                min="1"
+                value={item.quantity}
+                onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value))}
+                className="w-16 border rounded px-2 py-1"
+              />
+              <button
+                onClick={() => handleRemove(item.id)}
+                className="text-red-600 hover:text-red-800"
+              >
+                Remove
+              </button>
+            </div>
           </div>
+        ))}
+        <div className="mt-8 text-right">
+          <button
+            onClick={() => navigate('/checkout')}
+            className="bg-green-600 text-white px-8 py-3 rounded-md hover:bg-green-700"
+          >
+            Proceed to Checkout
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

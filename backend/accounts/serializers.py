@@ -1,3 +1,4 @@
+from .models import Profile
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -40,3 +41,17 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'email', 'role', 'phone', 'is_verified', 'phone_verified', 'date_joined')
         read_only_fields = ('id', 'date_joined', 'is_verified')
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ('first_name', 'last_name', 'avatar', 'address_line', 'city', 'country')
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate_new_password(self, value):
+        from django.contrib.auth.password_validation import validate_password
+        validate_password(value)
+        return value

@@ -4,7 +4,7 @@ import { logout } from '../store/authSlice';
 import { useEffect } from 'react';
 import { fetchCart } from '../store/cartSlice';
 import { fetchWishlist } from '../store/wishlistSlice';
-import { FiShoppingCart, FiUser, FiLogOut, FiHeart, FiBriefcase } from 'react-icons/fi';
+import { FiShoppingCart, FiUser, FiLogOut, FiHeart, FiBriefcase, FiSettings } from 'react-icons/fi';
 
 export default function Navbar() {
   const { user, token, retailer } = useSelector(state => state.auth);
@@ -49,6 +49,7 @@ export default function Navbar() {
           )}
           {user ? (
             <>
+              <Link to="/profile" className="text-sm font-medium flex items-center gap-1"><FiSettings className="inline" /></Link>
               <Link to="/dashboard" className="text-sm font-medium"><FiUser className="inline mr-1" />{user.email}</Link>
               <button onClick={handleLogout} className="text-sm text-red-600"><FiLogOut className="inline" /></button>
             </>

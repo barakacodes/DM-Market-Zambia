@@ -1,3 +1,4 @@
+import ErrorBoundary from './components/ErrorBoundary';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -22,7 +23,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Provider store={store}>
-      <BrowserRouter>
+      <ErrorBoundary><BrowserRouter>
         <Navbar />
         <Toaster position="top-right" />
         <Routes>
@@ -39,7 +40,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/apply" element={<ProtectedRoute><RetailerApplyPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+      </BrowserRouter></ErrorBoundary>
     </Provider>
   </React.StrictMode>
 );

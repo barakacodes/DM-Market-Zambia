@@ -1,24 +1,50 @@
 import { useState, useEffect } from 'react';
 import { getOrders } from '../api/orders';
+import EmptyState from '../components/EmptyState';
 
 export default function OrderHistoryPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    getOrders().then(res => {
-      setOrders(res.data.results || res.data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    getOrders()
+      .then(res => {
+        setOrders(res.data.results || res.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.response?.data?.detail || 'Failed to load orders.');
+        setLoading(false);
+      });
   }, []);
 
-  if (loading) return <p>Loading orders...</p>;
+  if (loading) return <p className="text-center py-8">Loading orders...</p>;
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">Order History</h1>
+        <div className="bg-red-50 p-6 rounded-md text-red-700">
+          <p>{error}</p>
+          <button onClick={() => window.location.reload()} className="mt-2 text-indigo-600 hover:underline">
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Order History</h1>
       {orders.length === 0 ? (
-        <p>You haven't placed any orders yet.</p>
+        <EmptyState
+          title="No orders yet"
+          message="Start shopping and come back to see your orders."
+          actionText="Browse products"
+          actionLink="/"
+        />
       ) : (
         <div className="space-y-6">
           {orders.map(order => (

@@ -8,3 +8,9 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('me/', UserDetailView.as_view(), name='user_detail'),
 ]
+from .profile_views import ProfileView, ChangePasswordView
+
+urlpatterns += [
+    path('profile/', ProfileView.as_view(), name='profile'),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+]

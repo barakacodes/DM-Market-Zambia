@@ -7,7 +7,7 @@ import { fetchWishlist } from '../store/wishlistSlice';
 import toast from 'react-hot-toast';
 import StarRating from '../components/StarRating';
 import HeartButton from '../components/HeartButton';
-import { FaStar } from 'react-icons/fa';
+import { FaStar, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { getMediaUrl } from '../utils/mediaUrl';
 
 export default function ProductDetailPage() {
@@ -18,12 +18,20 @@ export default function ProductDetailPage() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
+  const [mainImage, setMainImage] = useState(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const dispatch = useDispatch();
   const { user, token, retailer } = useSelector(state => state.auth);
   const isRetailer = retailer?.is_approved || user?.role === 'wholesaler';
 
   useEffect(() => {
-    getProduct(slug).then(res => setProduct(res.data));
+    getProduct(slug).then(res => {
+      setProduct(res.data);
+      if (res.data.images?.length > 0) {
+        setMainImage(getMediaUrl(res.data.images[0].image));
+      }
+    });
     getProductReviews(slug).then(res => setReviews(res.data.results || res.data));
     if (token) dispatch(fetchWishlist());
   }, [slug, token, dispatch]);
@@ -50,16 +58,65 @@ export default function ProductDetailPage() {
     }
   };
 
-  if (!product) return <p>Loading...</p>;
+  const openLightbox = (index) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
+
+  const closeLightbox = () => setLightboxOpen(false);
+  const nextImage = () => {
+    if (product?.images) setLightboxIndex((lightboxIndex + 1) % product.images.length);
+  };
+  const prevImage = () => {
+    if (product?.images) setLightboxIndex((lightboxIndex - 1 + product.images.length) % product.images.length);
+  };
+
+  if (!product) return <p className="text-center py-8">Loading...</p>;
+
+  const galleryImages = product.images || [];
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
-          {product.images && product.images.length > 0 ? (
-            <img src={getMediaUrl(product.images[0].image)} alt={product.title} className="w-full rounded-lg" />
-          ) : (
-            <img src="https://via.placeholder.com/500" alt="placeholder" className="w-full rounded-lg" />
+          <div className="relative">
+            <img
+              src={mainImage || 'https://via.placeholder.com/500'}
+              alt={product.title}
+              className="w-full rounded-lg cursor-pointer"
+              loading="lazy"
+              onClick={() => galleryImages.length > 1 && openLightbox(galleryImages.findIndex(img => getMediaUrl(img.image) === mainImage))}
+            />
+          </div>
+          {galleryImages.length > 1 && (
+            <div className="flex gap-2 mt-2 overflow-x-auto">
+              {galleryImages.map((img, idx) => (
+                <img
+                  key={img.id}
+                  src={getMediaUrl(img.image)}
+                  alt={`${product.title} ${idx+1}`}
+                  className={`w-16 h-16 object-cover rounded cursor-pointer border-2 ${mainImage === getMediaUrl(img.image) ? 'border-indigo-600' : 'border-gray-300'}`}
+                  loading="lazy"
+                  onClick={() => setMainImage(getMediaUrl(img.image))}
+                />
+              ))}
+            </div>
+          )}
+          {lightboxOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+              <button onClick={closeLightbox} className="absolute top-4 right-4 text-white text-3xl"><FaTimes /></button>
+              {galleryImages.length > 1 && (
+                <>
+                  <button onClick={prevImage} className="absolute left-4 text-white text-3xl"><FaChevronLeft /></button>
+                  <button onClick={nextImage} className="absolute right-4 text-white text-3xl"><FaChevronRight /></button>
+                </>
+              )}
+              <img
+                src={galleryImages[lightboxIndex] ? getMediaUrl(galleryImages[lightboxIndex].image) : mainImage}
+                alt="Product"
+                className="max-w-full max-h-full"
+              />
+            </div>
           )}
         </div>
         <div>
